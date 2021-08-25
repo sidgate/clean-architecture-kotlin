@@ -1,12 +1,11 @@
-package io.reflectoring.buckpal.adapter.persistence;
+package io.reflectoring.buckpal.adapter.persistence
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.SpringApplication
 
 @SpringBootApplication
 class TestApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(TestApplication.class, args);
-	}
+    fun main(args: Array<String>) {
+        SpringApplication.run(TestApplication::class.java, *args)
+    }
 }

@@ -1,148 +1,154 @@
-package io.reflectoring.buckpal.application.service;
+package io.reflectoring.buckpal.application.service
 
-import io.reflectoring.buckpal.application.port.in.SendMoneyUseCase.SendMoneyCommand;
-import io.reflectoring.buckpal.application.port.out.AccountLock;
-import io.reflectoring.buckpal.application.port.out.LoadAccountPort;
-import io.reflectoring.buckpal.application.port.out.UpdateAccountStatePort;
-import io.reflectoring.buckpal.domain.Account;
-import io.reflectoring.buckpal.domain.Account.AccountId;
-import io.reflectoring.buckpal.domain.Money;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
+import io.reflectoring.buckpal.application.port.`in`.SendMoneyUseCase
+import io.reflectoring.buckpal.application.port.out.AccountLock
+import io.reflectoring.buckpal.application.port.out.LoadAccountPort
+import io.reflectoring.buckpal.application.port.out.UpdateAccountStatePort
+import io.reflectoring.buckpal.domain.Account
+import io.reflectoring.buckpal.domain.Account.AccountId
+import io.reflectoring.buckpal.domain.Money
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import org.mockito.ArgumentCaptor
+import org.mockito.ArgumentMatchers
+import org.mockito.BDDMockito
+import org.mockito.BDDMockito.then
+import org.mockito.Mockito
+import java.time.LocalDateTime
+import java.util.*
+import java.util.stream.Collectors
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+internal class SendMoneyServiceTest {
+    private val loadAccountPort = Mockito.mock(LoadAccountPort::class.java)
+    private val accountLock = Mockito.mock(AccountLock::class.java)
+    private val updateAccountStatePort = Mockito.mock(
+        UpdateAccountStatePort::class.java
+    )
+    private val sendMoneyService =
+        SendMoneyService(loadAccountPort, accountLock, updateAccountStatePort, moneyTransferProperties())
 
-import static org.assertj.core.api.Assertions.*;
-import static org.mockito.BDDMockito.*;
+    @Test
+    fun givenWithdrawalFails_thenOnlySourceAccountIsLockedAndReleased() {
+        val sourceAccountId = AccountId(41L)
+        val sourceAccount = givenAnAccountWithId(sourceAccountId)
+        val targetAccountId = AccountId(42L)
+        val targetAccount = givenAnAccountWithId(targetAccountId)
+        givenWithdrawalWillFail(sourceAccount)
+        givenDepositWillSucceed(targetAccount)
+        val command = SendMoneyUseCase.SendMoneyCommand(
+            sourceAccountId,
+            targetAccountId,
+            Money.of(300L)
+        )
+        val success = sendMoneyService.sendMoney(command)
+        Assertions.assertThat(success).isFalse
+        then(accountLock).should().lockAccount(ArgumentMatchers.eq(sourceAccountId))
+        then(accountLock).should()
+            .releaseAccount(ArgumentMatchers.eq(sourceAccountId))
+        then(accountLock).should(Mockito.times(0))
+            .lockAccount(ArgumentMatchers.eq(targetAccountId))
+    }
 
-class SendMoneyServiceTest {
+    @Test
+    fun transactionSucceeds() {
+        val sourceAccount = givenSourceAccount()
+        val targetAccount = givenTargetAccount()
+        givenWithdrawalWillSucceed(sourceAccount)
+        givenDepositWillSucceed(targetAccount)
+        val money: Money = Money.of(500L)
+        val command = SendMoneyUseCase.SendMoneyCommand(
+            sourceAccount.id.get(),
+            targetAccount.id.get(),
+            money
+        )
+        val success = sendMoneyService.sendMoney(command)
+        Assertions.assertThat(success).isTrue
+        val sourceAccountId = sourceAccount.id.get()
+        val targetAccountId = targetAccount.id.get()
+        then(accountLock).should().lockAccount(ArgumentMatchers.eq(sourceAccountId))
+        then(sourceAccount).should()
+            .withdraw(ArgumentMatchers.eq(money), ArgumentMatchers.eq(targetAccountId))
+        then(accountLock).should()
+            .releaseAccount(ArgumentMatchers.eq(sourceAccountId))
+        then(accountLock).should().lockAccount(ArgumentMatchers.eq(targetAccountId))
+        then(targetAccount).should()
+            .deposit(ArgumentMatchers.eq(money), ArgumentMatchers.eq(sourceAccountId))
+        then(accountLock).should()
+            .releaseAccount(ArgumentMatchers.eq(targetAccountId))
+        thenAccountsHaveBeenUpdated(sourceAccountId, targetAccountId)
+    }
 
-	private final LoadAccountPort loadAccountPort =
-			Mockito.mock(LoadAccountPort.class);
+    private fun thenAccountsHaveBeenUpdated(vararg accountIds: AccountId) {
+        val accountCaptor: ArgumentCaptor<Account> = ArgumentCaptor.forClass(Account::class.java)
+        then(updateAccountStatePort).should(Mockito.times(accountIds.size))
+            .updateActivities(accountCaptor.capture())
+        val updatedAccountIds: List<AccountId> = accountCaptor.allValues
+            .stream()
+            .map { obj: Account -> obj.id }
+            .map { obj: Optional<AccountId?> -> obj.get() }
+            .collect(Collectors.toList())
+        for (accountId in accountIds) {
+            Assertions.assertThat(updatedAccountIds).contains(accountId)
+        }
+    }
 
-	private final AccountLock accountLock =
-			Mockito.mock(AccountLock.class);
+    private fun givenDepositWillSucceed(account: Account) {
+        BDDMockito.given(
+            account.deposit(
+                ArgumentMatchers.any(Money::class.java), ArgumentMatchers.any(
+                    AccountId::class.java
+                )
+            )
+        )
+            .willReturn(true)
+    }
 
-	private final UpdateAccountStatePort updateAccountStatePort =
-			Mockito.mock(UpdateAccountStatePort.class);
+    private fun givenWithdrawalWillFail(account: Account) {
+        BDDMockito.given(
+            account.withdraw(
+                ArgumentMatchers.any(Money::class.java), ArgumentMatchers.any(
+                    AccountId::class.java
+                )
+            )
+        )
+            .willReturn(false)
+    }
 
-	private final SendMoneyService sendMoneyService =
-			new SendMoneyService(loadAccountPort, accountLock, updateAccountStatePort, moneyTransferProperties());
+    private fun givenWithdrawalWillSucceed(account: Account) {
+        BDDMockito.given(
+            account.withdraw(
+                ArgumentMatchers.any(Money::class.java), ArgumentMatchers.any(
+                    AccountId::class.java
+                )
+            )
+        )
+            .willReturn(true)
+    }
 
-	@Test
-	void givenWithdrawalFails_thenOnlySourceAccountIsLockedAndReleased() {
+    private fun givenTargetAccount(): Account {
+        return givenAnAccountWithId(AccountId(42L))
+    }
 
-		AccountId sourceAccountId = new AccountId(41L);
-		Account sourceAccount = givenAnAccountWithId(sourceAccountId);
+    private fun givenSourceAccount(): Account {
+        return givenAnAccountWithId(AccountId(41L))
+    }
 
-		AccountId targetAccountId = new AccountId(42L);
-		Account targetAccount = givenAnAccountWithId(targetAccountId);
+    private fun givenAnAccountWithId(id: AccountId): Account {
+        val account = Mockito.mock(Account::class.java)
+        BDDMockito.given<Optional<AccountId>>(account.id)
+            .willReturn(Optional.of(id))
+        BDDMockito.given(
+            loadAccountPort.loadAccount(
+                ArgumentMatchers.eq(account.id.get()), ArgumentMatchers.any(
+                    LocalDateTime::class.java
+                )
+            )
+        )
+            .willReturn(account)
+        return account
+    }
 
-		givenWithdrawalWillFail(sourceAccount);
-		givenDepositWillSucceed(targetAccount);
-
-		SendMoneyCommand command = new SendMoneyCommand(
-				sourceAccountId,
-				targetAccountId,
-				Money.of(300L));
-
-		boolean success = sendMoneyService.sendMoney(command);
-
-		assertThat(success).isFalse();
-
-		then(accountLock).should().lockAccount(eq(sourceAccountId));
-		then(accountLock).should().releaseAccount(eq(sourceAccountId));
-		then(accountLock).should(times(0)).lockAccount(eq(targetAccountId));
-	}
-
-	@Test
-	void transactionSucceeds() {
-
-		Account sourceAccount = givenSourceAccount();
-		Account targetAccount = givenTargetAccount();
-
-		givenWithdrawalWillSucceed(sourceAccount);
-		givenDepositWillSucceed(targetAccount);
-
-		Money money = Money.of(500L);
-
-		SendMoneyCommand command = new SendMoneyCommand(
-				sourceAccount.getId().get(),
-				targetAccount.getId().get(),
-				money);
-
-		boolean success = sendMoneyService.sendMoney(command);
-
-		assertThat(success).isTrue();
-
-		AccountId sourceAccountId = sourceAccount.getId().get();
-		AccountId targetAccountId = targetAccount.getId().get();
-
-		then(accountLock).should().lockAccount(eq(sourceAccountId));
-		then(sourceAccount).should().withdraw(eq(money), eq(targetAccountId));
-		then(accountLock).should().releaseAccount(eq(sourceAccountId));
-
-		then(accountLock).should().lockAccount(eq(targetAccountId));
-		then(targetAccount).should().deposit(eq(money), eq(sourceAccountId));
-		then(accountLock).should().releaseAccount(eq(targetAccountId));
-
-		thenAccountsHaveBeenUpdated(sourceAccountId, targetAccountId);
-	}
-
-	private void thenAccountsHaveBeenUpdated(AccountId... accountIds){
-		ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
-		then(updateAccountStatePort).should(times(accountIds.length))
-				.updateActivities(accountCaptor.capture());
-
-		List<AccountId> updatedAccountIds = accountCaptor.getAllValues()
-				.stream()
-				.map(Account::getId)
-				.map(Optional::get)
-				.collect(Collectors.toList());
-
-		for(AccountId accountId : accountIds){
-			assertThat(updatedAccountIds).contains(accountId);
-		}
-	}
-
-	private void givenDepositWillSucceed(Account account) {
-		given(account.deposit(any(Money.class), any(AccountId.class)))
-				.willReturn(true);
-	}
-
-	private void givenWithdrawalWillFail(Account account) {
-		given(account.withdraw(any(Money.class), any(AccountId.class)))
-				.willReturn(false);
-	}
-
-	private void givenWithdrawalWillSucceed(Account account) {
-		given(account.withdraw(any(Money.class), any(AccountId.class)))
-				.willReturn(true);
-	}
-
-	private Account givenTargetAccount(){
-		return givenAnAccountWithId(new AccountId(42L));
-	}
-
-	private Account givenSourceAccount(){
-		return givenAnAccountWithId(new AccountId(41L));
-	}
-
-	private Account givenAnAccountWithId(AccountId id) {
-		Account account = Mockito.mock(Account.class);
-		given(account.getId())
-				.willReturn(Optional.of(id));
-		given(loadAccountPort.loadAccount(eq(account.getId().get()), any(LocalDateTime.class)))
-				.willReturn(account);
-		return account;
-	}
-
-	private MoneyTransferProperties moneyTransferProperties(){
-		return new MoneyTransferProperties(Money.of(Long.MAX_VALUE));
-	}
-
+    private fun moneyTransferProperties(): MoneyTransferProperties {
+        return MoneyTransferProperties(Money.of(Long.MAX_VALUE))
+    }
 }

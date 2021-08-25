@@ -1,55 +1,50 @@
-package io.reflectoring.buckpal.adapter.persistence;
+package io.reflectoring.buckpal.adapter.persistence
 
-import java.time.LocalDateTime;
-
-import io.reflectoring.buckpal.domain.Account;
-import io.reflectoring.buckpal.domain.Account.AccountId;
-import io.reflectoring.buckpal.domain.ActivityWindow;
-import io.reflectoring.buckpal.domain.Money;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.jdbc.Sql;
-import static io.reflectoring.buckpal.common.AccountTestData.*;
-import static io.reflectoring.buckpal.common.ActivityTestData.*;
-import static org.assertj.core.api.Assertions.*;
+import io.reflectoring.buckpal.common.AccountTestData.defaultAccount
+import io.reflectoring.buckpal.common.ActivityTestData.defaultActivity
+import io.reflectoring.buckpal.domain.Account
+import io.reflectoring.buckpal.domain.Account.AccountId
+import io.reflectoring.buckpal.domain.ActivityWindow
+import io.reflectoring.buckpal.domain.Money
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
+import org.springframework.context.annotation.Import
+import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDateTime
 
 @DataJpaTest
-@Import({AccountPersistenceAdapter.class, AccountMapper.class})
-class AccountPersistenceAdapterTest {
+@Import(AccountPersistenceAdapter::class, AccountMapper::class)
+internal class AccountPersistenceAdapterTest {
+    @Autowired
+    private val adapterUnderTest: AccountPersistenceAdapter? = null
 
-	@Autowired
-	private AccountPersistenceAdapter adapterUnderTest;
+    @Autowired
+    private val activityRepository: ActivityRepository? = null
+    @Test
+    @Sql("AccountPersistenceAdapterTest.sql")
+    fun loadsAccount() {
+        val account = adapterUnderTest!!.loadAccount(AccountId(1L), LocalDateTime.of(2018, 8, 10, 0, 0))
+        Assertions.assertThat(account.activityWindow.activities).hasSize(2)
+        Assertions.assertThat(account.calculateBalance()).isEqualTo(Money.of(500))
+    }
 
-	@Autowired
-	private ActivityRepository activityRepository;
-
-	@Test
-	@Sql("AccountPersistenceAdapterTest.sql")
-	void loadsAccount() {
-		Account account = adapterUnderTest.loadAccount(new AccountId(1L), LocalDateTime.of(2018, 8, 10, 0, 0));
-
-		assertThat(account.getActivityWindow().getActivities()).hasSize(2);
-		assertThat(account.calculateBalance()).isEqualTo(Money.of(500));
-	}
-
-	@Test
-	void updatesActivities() {
-		Account account = defaultAccount()
-				.withBaselineBalance(Money.of(555L))
-				.withActivityWindow(new ActivityWindow(
-						defaultActivity()
-								.withId(null)
-								.withMoney(Money.of(1L)).build()))
-				.build();
-
-		adapterUnderTest.updateActivities(account);
-
-		assertThat(activityRepository.count()).isEqualTo(1);
-
-		ActivityJpaEntity savedActivity = activityRepository.findAll().get(0);
-		assertThat(savedActivity.getAmount()).isEqualTo(1L);
-	}
-
+    @Test
+    fun updatesActivities() {
+        val account: Account = defaultAccount()
+            .withBaselineBalance(Money.of(555L))
+            .withActivityWindow(
+                ActivityWindow(
+                    defaultActivity()
+                        .withId(null)
+                        .withMoney(Money.of(1L)).build()
+                )
+            )
+            .build()
+        adapterUnderTest!!.updateActivities(account)
+        Assertions.assertThat(activityRepository!!.count()).isEqualTo(1)
+        val savedActivity = activityRepository.findAll()[0]
+        Assertions.assertThat(savedActivity.amount).isEqualTo(1L)
+    }
 }

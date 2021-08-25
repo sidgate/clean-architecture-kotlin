@@ -1,68 +1,63 @@
-package io.reflectoring.buckpal.domain;
+package io.reflectoring.buckpal.domain
 
-import java.time.LocalDateTime;
+import io.reflectoring.buckpal.common.ActivityTestData.defaultActivity
+import io.reflectoring.buckpal.domain.Account.AccountId
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import java.time.LocalDateTime
 
-import io.reflectoring.buckpal.domain.Account.AccountId;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
-import static io.reflectoring.buckpal.common.ActivityTestData.*;
+internal class ActivityWindowTest {
+    @Test
+    fun calculatesStartTimestamp() {
+        val window = ActivityWindow(
+            defaultActivity().withTimestamp(startDate()).build(),
+            defaultActivity().withTimestamp(inBetweenDate()).build(),
+            defaultActivity().withTimestamp(endDate()).build()
+        )
+        Assertions.assertThat(window.startTimestamp).isEqualTo(startDate())
+    }
 
-class ActivityWindowTest {
+    @Test
+    fun calculatesEndTimestamp() {
+        val window = ActivityWindow(
+            defaultActivity().withTimestamp(startDate()).build(),
+            defaultActivity().withTimestamp(inBetweenDate()).build(),
+            defaultActivity().withTimestamp(endDate()).build()
+        )
+        Assertions.assertThat(window.endTimestamp).isEqualTo(endDate())
+    }
 
-	@Test
-	void calculatesStartTimestamp() {
-		ActivityWindow window = new ActivityWindow(
-				defaultActivity().withTimestamp(startDate()).build(),
-				defaultActivity().withTimestamp(inBetweenDate()).build(),
-				defaultActivity().withTimestamp(endDate()).build());
+    @Test
+    fun calculatesBalance() {
+        val account1 = AccountId(1L)
+        val account2 = AccountId(2L)
+        val window = ActivityWindow(
+            defaultActivity()
+                .withSourceAccount(account1)
+                .withTargetAccount(account2)
+                .withMoney(Money.of(999)).build(),
+            defaultActivity()
+                .withSourceAccount(account1)
+                .withTargetAccount(account2)
+                .withMoney(Money.of(1)).build(),
+            defaultActivity()
+                .withSourceAccount(account2)
+                .withTargetAccount(account1)
+                .withMoney(Money.of(500)).build()
+        )
+        Assertions.assertThat(window.calculateBalance(account1)).isEqualTo(Money.of(-500))
+        Assertions.assertThat(window.calculateBalance(account2)).isEqualTo(Money.of(500))
+    }
 
-		Assertions.assertThat(window.getStartTimestamp()).isEqualTo(startDate());
-	}
+    private fun startDate(): LocalDateTime {
+        return LocalDateTime.of(2019, 8, 3, 0, 0)
+    }
 
-	@Test
-	void calculatesEndTimestamp() {
-		ActivityWindow window = new ActivityWindow(
-				defaultActivity().withTimestamp(startDate()).build(),
-				defaultActivity().withTimestamp(inBetweenDate()).build(),
-				defaultActivity().withTimestamp(endDate()).build());
+    private fun inBetweenDate(): LocalDateTime {
+        return LocalDateTime.of(2019, 8, 4, 0, 0)
+    }
 
-		Assertions.assertThat(window.getEndTimestamp()).isEqualTo(endDate());
-	}
-
-	@Test
-	void calculatesBalance() {
-
-		AccountId account1 = new AccountId(1L);
-		AccountId account2 = new AccountId(2L);
-
-		ActivityWindow window = new ActivityWindow(
-				defaultActivity()
-						.withSourceAccount(account1)
-						.withTargetAccount(account2)
-						.withMoney(Money.of(999)).build(),
-				defaultActivity()
-						.withSourceAccount(account1)
-						.withTargetAccount(account2)
-						.withMoney(Money.of(1)).build(),
-				defaultActivity()
-						.withSourceAccount(account2)
-						.withTargetAccount(account1)
-						.withMoney(Money.of(500)).build());
-
-		Assertions.assertThat(window.calculateBalance(account1)).isEqualTo(Money.of(-500));
-		Assertions.assertThat(window.calculateBalance(account2)).isEqualTo(Money.of(500));
-	}
-
-	private LocalDateTime startDate() {
-		return LocalDateTime.of(2019, 8, 3, 0, 0);
-	}
-
-	private LocalDateTime inBetweenDate() {
-		return LocalDateTime.of(2019, 8, 4, 0, 0);
-	}
-
-	private LocalDateTime endDate() {
-		return LocalDateTime.of(2019, 8, 5, 0, 0);
-	}
-
+    private fun endDate(): LocalDateTime {
+        return LocalDateTime.of(2019, 8, 5, 0, 0)
+    }
 }

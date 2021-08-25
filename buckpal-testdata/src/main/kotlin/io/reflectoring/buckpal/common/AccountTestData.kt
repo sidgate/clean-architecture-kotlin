@@ -1,48 +1,44 @@
-package io.reflectoring.buckpal.common;
+package io.reflectoring.buckpal.common
 
-import io.reflectoring.buckpal.domain.Account;
-import io.reflectoring.buckpal.domain.Account.AccountId;
-import io.reflectoring.buckpal.domain.ActivityWindow;
-import io.reflectoring.buckpal.domain.Money;
+import io.reflectoring.buckpal.domain.Account
+import io.reflectoring.buckpal.domain.Account.AccountId
+import io.reflectoring.buckpal.domain.ActivityWindow
+import io.reflectoring.buckpal.domain.Money
 
-public class AccountTestData {
+object AccountTestData {
+    fun defaultAccount(): AccountBuilder {
+        return AccountBuilder()
+            .withAccountId(AccountId(42L))
+            .withBaselineBalance(Money.of(999L))
+            .withActivityWindow(
+                ActivityWindow(
+                    ActivityTestData.defaultActivity().build(),
+                    ActivityTestData.defaultActivity().build()
+                )
+            )
+    }
 
-	public static AccountBuilder defaultAccount() {
-		return new AccountBuilder()
-				.withAccountId(new AccountId(42L))
-				.withBaselineBalance(Money.of(999L))
-				.withActivityWindow(new ActivityWindow(
-						ActivityTestData.defaultActivity().build(),
-						ActivityTestData.defaultActivity().build()));
-	}
+    class AccountBuilder {
+        private var accountId: AccountId? = null
+        private var baselineBalance: Money? = null
+        private var activityWindow: ActivityWindow? = null
+        fun withAccountId(accountId: AccountId?): AccountBuilder {
+            this.accountId = accountId
+            return this
+        }
 
+        fun withBaselineBalance(baselineBalance: Money?): AccountBuilder {
+            this.baselineBalance = baselineBalance
+            return this
+        }
 
-	public static class AccountBuilder {
+        fun withActivityWindow(activityWindow: ActivityWindow?): AccountBuilder {
+            this.activityWindow = activityWindow
+            return this
+        }
 
-		private AccountId accountId;
-		private Money baselineBalance;
-		private ActivityWindow activityWindow;
-
-		public AccountBuilder withAccountId(AccountId accountId) {
-			this.accountId = accountId;
-			return this;
-		}
-
-		public AccountBuilder withBaselineBalance(Money baselineBalance) {
-			this.baselineBalance = baselineBalance;
-			return this;
-		}
-
-		public AccountBuilder withActivityWindow(ActivityWindow activityWindow) {
-			this.activityWindow = activityWindow;
-			return this;
-		}
-
-		public Account build() {
-			return Account.withId(this.accountId, this.baselineBalance, this.activityWindow);
-		}
-
-	}
-
-
+        fun build(): Account {
+            return Account.withId(accountId, baselineBalance, activityWindow)
+        }
+    }
 }
