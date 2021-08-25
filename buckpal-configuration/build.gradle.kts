@@ -1,6 +1,3 @@
-plugins {
-    id ("org.springframework.boot") version "2.1.9.RELEASE"
-}
 
 dependencies {
 
