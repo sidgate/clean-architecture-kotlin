@@ -11,7 +11,6 @@ plugins {
 repositories {
     mavenCentral()
 }
-
 subprojects {
 
     group = "io.reflectoring.reviewapp"
@@ -35,6 +34,20 @@ subprojects {
             sourceCompatibility = "1.8"
             targetCompatibility = "1.8"
         }
+
+        bootJar {
+            enabled = false
+        }
+
+        jar {
+            enabled = true
+        }
     }
 
+}
+
+tasks {
+    bootJar {
+        enabled = false
+    }
 }

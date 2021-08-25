@@ -28,5 +28,9 @@ tasks {
         useJUnitPlatform()
         systemProperty ("de.adesso.junitinsights.enabled", "true")
     }
+
+    bootJar {
+        enabled = true
+    }
 }
 

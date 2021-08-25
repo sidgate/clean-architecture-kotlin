@@ -1,3 +1,6 @@
+plugins{
+    kotlin("plugin.allopen")
+}
 dependencies {
     implementation (project(":common"))
     implementation (project(":buckpal-application"))
@@ -21,5 +24,8 @@ tasks {
     test {
         useJUnitPlatform()
         systemProperty ("de.adesso.junitinsights.enabled", "true")
+    }
+    allOpen {
+        annotation("org.springframework.boot.autoconfigure.SpringBootApplication")
     }
 }
