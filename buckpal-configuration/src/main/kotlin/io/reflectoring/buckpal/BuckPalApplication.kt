@@ -1,13 +1,10 @@
-package io.reflectoring.buckpal;
+package io.reflectoring.buckpal
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.SpringApplication
+import org.springframework.boot.autoconfigure.SpringBootApplication
 
 @SpringBootApplication
-public class BuckPalApplication {
-
-  public static void main(String[] args) {
-    SpringApplication.run(BuckPalApplication.class, args);
-  }
-
+class BuckPalApplication
+fun main(args: Array<String>) {
+    SpringApplication.run(BuckPalApplication::class.java, *args)
 }

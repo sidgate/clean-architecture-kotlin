@@ -1,15 +1,16 @@
-
+plugins{
+    kotlin("plugin.allopen")
+    kotlin("plugin.spring")
+}
 dependencies {
 
-    compileOnly ("org.projectlombok:lombok")
-    annotationProcessor ("org.projectlombok:lombok")
-    
     implementation (project(":common"))
     implementation (project(":buckpal-application"))
     implementation (project(":adapters:buckpal-persistence"))
     implementation (project(":adapters:buckpal-web"))
     implementation ("org.springframework.boot:spring-boot-starter-web")
     runtimeOnly ("com.h2database:h2")
+    annotationProcessor ("org.springframework.boot:spring-boot-configuration-processor")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude (group = "junit") // excluding junit 4
@@ -31,6 +32,11 @@ tasks {
 
     bootJar {
         enabled = true
+    }
+
+    allOpen {
+        annotations("org.springframework.boot.autoconfigure.SpringBootApplication",
+        "org.springframework.context.annotation.Configuration")
     }
 }
 

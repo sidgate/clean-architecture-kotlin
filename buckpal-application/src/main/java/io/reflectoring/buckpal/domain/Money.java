@@ -37,6 +37,10 @@ public class Money {
 		return new Money(BigInteger.valueOf(value));
 	}
 
+	public static Money of(int value) {
+		return new Money(BigInteger.valueOf(value));
+	}
+
 	public static Money add(Money a, Money b) {
 		return new Money(a.amount.add(b.amount));
 	}

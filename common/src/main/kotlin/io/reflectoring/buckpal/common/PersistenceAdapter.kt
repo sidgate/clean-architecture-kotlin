@@ -1,26 +1,16 @@
-package io.reflectoring.buckpal.common;
+package io.reflectoring.buckpal.common
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.springframework.stereotype.Component
 
-import org.springframework.core.annotation.AliasFor;
-import org.springframework.stereotype.Component;
-
-@Target({ElementType.TYPE})
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
+@Target(AnnotationTarget.ANNOTATION_CLASS, AnnotationTarget.CLASS)
+@kotlin.annotation.Retention(AnnotationRetention.RUNTIME)
+@MustBeDocumented
 @Component
-public @interface PersistenceAdapter {
-
-  /**
-   * The value may indicate a suggestion for a logical component name,
-   * to be turned into a Spring bean in case of an autodetected component.
-   * @return the suggested component name, if any (or empty String otherwise)
-   */
-  @AliasFor(annotation = Component.class)
-  String value() default "";
-
-}
+annotation class PersistenceAdapter(
+    /**
+     * The value may indicate a suggestion for a logical component name,
+     * to be turned into a Spring bean in case of an autodetected component.
+     * @return the suggested component name, if any (or empty String otherwise)
+     */
+    val value: String = ""
+)
