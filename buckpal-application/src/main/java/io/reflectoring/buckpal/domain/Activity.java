@@ -42,14 +42,12 @@ public class Activity {
 	 * The timestamp of the activity.
 	 */
 	@Getter
-	@NonNull
 	private final LocalDateTime timestamp;
 
 	/**
 	 * The money that was transferred between the accounts.
 	 */
 	@Getter
-	@NonNull
 	private final Money money;
 
 	public Activity(
